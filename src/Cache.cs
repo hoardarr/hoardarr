@@ -13,8 +13,8 @@ using WyHash;
 
 namespace Hoardarr
 {
-    class Cache
-    {
+	class Cache
+	{
 		readonly Logger _logger;
 		readonly Pool _pool;
 
@@ -24,7 +24,7 @@ namespace Hoardarr
 
 
 		public Cache(Logger l, Pool pool, string mountPoint)
-        {
+		{
 			_mountPoint = mountPoint;
 			_pool = pool;
 			_logger = l;
@@ -34,7 +34,7 @@ namespace Hoardarr
 		public ResolvedCacheItem? GetItem(string virtualPath)
 		{
 			if (string.IsNullOrEmpty(virtualPath) || virtualPath == "/")
-				return _root == null?null:new ResolvedCacheItem(_root, _mountPoint, virtualPath);
+				return _root == null ? null : new ResolvedCacheItem(_root, _mountPoint, virtualPath);
 			var split = virtualPath.Split('/', StringSplitOptions.RemoveEmptyEntries);
 			var item = _root;
 
@@ -52,17 +52,17 @@ namespace Hoardarr
 					item = null;
 			}
 
-			return item==null?null:new ResolvedCacheItem(item, item.Disks[0].PhysicalPath + virtualPath, virtualPath);
+			return item == null ? null : new ResolvedCacheItem(item, item.Disks[0].PhysicalPath + virtualPath, virtualPath);
 		}
 
 		public static FilePermissions FILE = FilePermissions.S_IROTH | FilePermissions.S_IRGRP | FilePermissions.S_IWUSR | FilePermissions.S_IRUSR | FilePermissions.S_IFREG;
 		public static FilePermissions DIRECTORY = FilePermissions.S_IXOTH | FilePermissions.S_IROTH | FilePermissions.S_IXGRP | FilePermissions.S_IRGRP | FilePermissions.S_IRWXU | FilePermissions.S_IFDIR;
 
 		public ResolvedCacheItem? Create(string virtualPath, Func<string, int> action, Disk? disk = null)
-        {
+		{
 			var split = virtualPath.Split('/', StringSplitOptions.RemoveEmptyEntries);
-            if (_root == null)
-            {
+			if (_root == null)
+			{
 				_logger.Error($"Cache CreateDirectory failed as there is no root! [VPath:{virtualPath}]");
 				return null;
 			}
@@ -72,14 +72,14 @@ namespace Hoardarr
 			for (int i = 0; ; i++)
 			{
 				Monitor.Enter(parent);
-					if (parent.SubItems == null)
-						parent.SubItems = new Dictionary<string, CacheEntry>();
+				if (parent.SubItems == null)
+					parent.SubItems = new Dictionary<string, CacheEntry>();
 
 				if (i + 1 == split.Length)
 				{
 					// Perform create
-					
-						var bestParentDisk =  disk ?? parent.Disks.OrderByDescending(p => p.DiskStats.f_bfree * p.DiskStats.f_bsize).First();
+
+					var bestParentDisk = disk ?? parent.Disks.OrderByDescending(p => p.DiskStats.f_bfree * p.DiskStats.f_bsize).First();
 
 					if (disk == null)
 					{
@@ -178,7 +178,7 @@ namespace Hoardarr
 					Monitor.Exit(subValue);
 				}
 				else
-                {
+				{
 					var bestParentDisk = parent.Disks.OrderByDescending(p => p.DiskStats.f_bfree * p.DiskStats.f_bsize).First();
 					var physicalPath = bestParentDisk.PhysicalPath + "/" + string.Join('/', split.Take(i + 1));
 
@@ -213,18 +213,18 @@ namespace Hoardarr
 
 		public void Remove(string path)
 		{
-            if (_root == null)
-            {
+			if (_root == null)
+			{
 				_logger.Error($"Cache failed to remove as there is no root! [VPath:{path}]");
 				return;
-            }
+			}
 			var parentDir = Path.GetDirectoryName(path);
-			var parent = parentDir == null ? new ResolvedCacheItem(_root, _root.Disks[0].PhysicalPath, "/"): GetItem(parentDir);
+			var parent = parentDir == null ? new ResolvedCacheItem(_root, _root.Disks[0].PhysicalPath, "/") : GetItem(parentDir);
 			if (parent == null || parent.Entry.SubItems == null)
-            {
+			{
 				_logger.Error($"Cache failed to remove [VPath:{path}]");
 				return;
-            }
+			}
 			var name = Path.GetFileName(path);
 			lock (parent)
 				parent.Entry.SubItems.Remove(name);
@@ -247,16 +247,16 @@ namespace Hoardarr
 					continue;
 				}
 
-				if(_root== null)
-                {
+				if (_root == null)
+				{
 					newStatusStats.CleanStat("/");
 					_root = new CacheEntry(disk, newStatusStats);
-                }
-				else if(_root.Status.st_mtime< newStatusStats.st_mtime)
-                {
+				}
+				else if (_root.Status.st_mtime < newStatusStats.st_mtime)
+				{
 					newStatusStats.CleanStat("/");
 					_root.Status = newStatusStats;
-                }
+				}
 
 				IntPtr dp = Syscall.opendir(disk.PhysicalPath);
 				if (dp == IntPtr.Zero)
@@ -281,7 +281,7 @@ namespace Hoardarr
 
 		private CacheEntry? CacheItem(string path, Disk disk, CacheEntry parent, bool processChildren = true)
 		{
-			var physicalpath = disk.PhysicalPath +path;
+			var physicalpath = disk.PhysicalPath + path;
 			var name = Path.GetFileName(path);
 			if (Syscall.lstat(physicalpath, out Stat newStatusStats) == -1)
 			{
@@ -294,7 +294,7 @@ namespace Hoardarr
 				}
 				return null;
 			}
-			 newStatusStats.CleanStat(path);
+			newStatusStats.CleanStat(path);
 
 			if (parent.SubItems == null)
 				parent.SubItems = new Dictionary<string, CacheEntry>();
@@ -328,32 +328,32 @@ namespace Hoardarr
 					return currentItem;
 				}
 				Dirent de;
-				while ((de = Syscall.readdir(dp)) !=null)
+				while ((de = Syscall.readdir(dp)) != null)
 				{
 					if (de.d_name == ".." || de.d_name == ".")
 						continue;
-					CacheItem(path+ "/" + de.d_name, disk, currentItem);
+					CacheItem(path + "/" + de.d_name, disk, currentItem);
 				}
 				Syscall.closedir(dp);
 			}
 
 			return currentItem;
 		}
-    }
+	}
 
-    public enum CacheState { Starting, Active }
+	public enum CacheState { Starting, Active }
 
 	public class UpdatedPath
-    {
+	{
 		public string Path { set; get; }
 		public Disk Disk { set; get; }
 		public bool IncrementHandle { set; get; }
 
 		public UpdatedPath(string path, Disk disk, bool incrementHandle)
-        {
+		{
 			Path = path;
 			Disk = disk;
 			IncrementHandle = incrementHandle;
-        }
-    }
+		}
+	}
 }

@@ -15,8 +15,8 @@ using WyHash;
 
 namespace Hoardarr
 {
-    public class PoolFileSystem: FileSystem
-    {
+	public class PoolFileSystem : FileSystem
+	{
 		readonly Logger _logger;
 		readonly Pool _pool;
 		readonly Cache _cache;
@@ -27,12 +27,12 @@ namespace Hoardarr
 		{
 			_logger = logger;
 			MountPoint = dirs[0];
-		
+
 			// Create pool checking each disk
 			var disks = dirs.Skip(1).SelectMany(d =>
 		{
-				// Expand asterisk
-				if (d.Contains("*"))
+			// Expand asterisk
+			if (d.Contains("*"))
 			{
 				if (System.IO.Path.GetFileName(d) == "*")
 					return System.IO.Directory.GetDirectories(System.IO.Path.GetDirectoryName(d)!);
@@ -71,59 +71,6 @@ namespace Hoardarr
 
 			logger.Warning($"Mount: {MountPoint} Sources: {string.Join(", ", _pool.Disks.Select(s => $"{s.PhysicalPath}"))}");
 		}
-
-		/*
-		/// <summary>
-		/// Utility to expand a virtual path to a phsysical based on cached if its active else fallback to checking disks
-		/// </summary>
-		/// <param name="path"></param>
-		/// <param name="memberName"></param>
-		/// <returns></returns>
-		private Tuple<string, Disk>? GetPhysicalPath(string path, bool incrementHandles,  [System.Runtime.CompilerServices.CallerMemberName] string memberName = "")
-		{
-			if (_cache.State == CacheState.Active)
-			{
-				var cacheItem = _cache.GetItem(path);
-				if (cacheItem == null)
-				{
-					_logger.Debug($"{memberName} Failed - {path}");
-					return null;
-				}
-
-                if (incrementHandles)
-                {
-					lock (cacheItem)
-						cacheItem.OpenHandles++;
-                }
-
-				return new Tuple<string, Disk>(cacheItem.Disks[0].PhysicalPath+path, cacheItem.Disks[0]);
-			}
-			else
-			{
-				var physicalPath = _pool.GetFullPath(path);
-				_logger.Debug($"ACCESS {memberName} - {path} -> {physicalPath}");
-				return physicalPath;
-			}
-		}
-
-		public ResolvedPath GetNewPath(string virtualPath)
-		{
-			if (_cache.State == CacheState.Active)
-			{
-				var cacheItem = _cache.GetItem(virtualPath);
-                if (cacheItem != null)
-                {
-					return cacheItem.GetPhysicalPath(virtualPath);
-                }
-
-
-
-			}
-			else
-            {
-				return _pool.GetNewPath(virtualPath);
-            }
-		}*/
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		private void WaitForCache()
@@ -171,7 +118,7 @@ namespace Hoardarr
 						buf.CleanStat(virtualPath);
 						_logger.Information($"ACCESS OnGetPathStatus [Handles:{cacheItem.Entry.OpenHandles}] [VPath:{virtualPath}] [Inode:{buf.st_ino}] [Result:{result}]");
 						cacheItem.Entry.Disks[0].Touch();
-						return LogAnyError(virtualPath, result==-1?-1:0);
+						return LogAnyError(virtualPath, result == -1 ? -1 : 0);
 					}
 				}
 
@@ -216,13 +163,13 @@ namespace Hoardarr
 			{
 				if (isCreate)
 				{
-					 cacheItem = _cache.Create(virtualPath, (string physicalPath) =>
-					{
-						var result = Syscall.mkdir(physicalPath,Cache.DIRECTORY);
-						return result;
-					});
+					cacheItem = _cache.Create(virtualPath, (string physicalPath) =>
+				   {
+					   var result = Syscall.mkdir(physicalPath, Cache.DIRECTORY);
+					   return result;
+				   });
 				}
-				if(cacheItem == null)
+				if (cacheItem == null)
 					return LogAnyError(virtualPath, Errno.ENOENT);
 				cacheItem.UpdateStats(_logger);
 			}
@@ -312,38 +259,38 @@ namespace Hoardarr
 		{
 			WaitForCache();
 
-			Func<string, int> action  = (string physicalPath) =>
-			 {
-				 int r;
+			Func<string, int> action = (string physicalPath) =>
+			{
+				int r;
 
 				 // On Linux, this could just be `mknod(basedir+path, mode, rdev)' but 
 				 // this is more portable.
 				 if ((mode & FilePermissions.S_IFMT) == FilePermissions.S_IFREG)
-				 {
-					 r = Syscall.open(physicalPath, OpenFlags.O_CREAT | OpenFlags.O_EXCL |
-							 OpenFlags.O_WRONLY, mode);
-					 if (r >= 0)
-						 r = Syscall.close(r);
-				 }
-				 else if ((mode & FilePermissions.S_IFMT) == FilePermissions.S_IFIFO)
-				 {
-					 r = Syscall.mkfifo(physicalPath, mode);
-				 }
-				 else
-				 {
-					 r = Syscall.mknod(physicalPath, mode, rdev);
-				 }
+				{
+					r = Syscall.open(physicalPath, OpenFlags.O_CREAT | OpenFlags.O_EXCL |
+							OpenFlags.O_WRONLY, mode);
+					if (r >= 0)
+						r = Syscall.close(r);
+				}
+				else if ((mode & FilePermissions.S_IFMT) == FilePermissions.S_IFIFO)
+				{
+					r = Syscall.mkfifo(physicalPath, mode);
+				}
+				else
+				{
+					r = Syscall.mknod(physicalPath, mode, rdev);
+				}
 
 				 // TODO Permissions?
 				 if (r != -1)
-				 {
-					 var context = GetOperationContext();
-					 r = Syscall.chown(physicalPath, (uint)context.UserId, (uint)context.GroupId);
-				 }
+				{
+					var context = GetOperationContext();
+					r = Syscall.chown(physicalPath, (uint)context.UserId, (uint)context.GroupId);
+				}
 
-				 _logger.Information($"OnCreateSpecialFile [VPath:{virtualPath}] [PhysPath:{physicalPath}] [Result:{r}]");
-				 return r;
-			 };
+				_logger.Information($"OnCreateSpecialFile [VPath:{virtualPath}] [PhysPath:{physicalPath}] [Result:{r}]");
+				return r;
+			};
 
 			var cacheItem = _cache.GetItem(virtualPath);
 			if (cacheItem == null)
@@ -355,7 +302,7 @@ namespace Hoardarr
 				return 0;
 			}
 
-			var result =  action(cacheItem.PhysicalPath);
+			var result = action(cacheItem.PhysicalPath);
 			return LogAnyError(virtualPath, result);
 		}
 
@@ -401,8 +348,8 @@ namespace Hoardarr
 
 			bool ok = false;
 			int lastResult = 0;
-			foreach(var disk in cacheItem.Entry.Disks)
-            {
+			foreach (var disk in cacheItem.Entry.Disks)
+			{
 				disk.Touch();
 				var physicalPath = disk.PhysicalPath + virtualPath;
 				lastResult = Syscall.unlink(disk.PhysicalPath + virtualPath);
@@ -413,8 +360,8 @@ namespace Hoardarr
 				}
 			}
 
-            if (ok)
-            {
+			if (ok)
+			{
 				_cache.Remove(virtualPath);
 				return 0;
 			}
@@ -502,12 +449,12 @@ namespace Hoardarr
 			_logger.Information($"OnRenamePath rename file same disk! [VPathFrom:{fromVirtualPath}] [VPathTo:{toVirtualPath}] [PhysPathFrom:{ fromCacheItem.PhysicalPath}] [PhysPathTo:{toCacheItem.PhysicalPath}] [Result:{result}]");
 			if (result != -1)
 			{
-                if (isDir)
-                {
+				if (isDir)
+				{
 					toCacheItem.Entry.SubItems = fromCacheItem.Entry.SubItems;
 
 
-                }
+				}
 				// TODO : Different files in a folder on different disks
 				_cache.Remove(fromVirtualPath);
 				toCacheItem.UpdateStats(_logger);
@@ -531,7 +478,7 @@ namespace Hoardarr
 			_logger.Warning($"{memberName} [VPath:{virtualPath}] [Result:{e}]");
 			return e;
 		}
-		
+
 
 		protected override Errno OnCreateHardLink(string from, string to)
 		{
@@ -604,7 +551,7 @@ namespace Hoardarr
 			WaitForCache();
 			var cacheItem = _cache.GetItem(virtualPath);
 			if (cacheItem == null)
-            {
+			{
 				_logger.Error($"OnChangePathTimes not found! {virtualPath}");
 				return Errno.ENOENT;
 			}
@@ -676,7 +623,7 @@ namespace Hoardarr
 			 {
 
 				 int r = Syscall.open(physicalPath, info.OpenFlags);
-				 
+
 				 info.Handle = (IntPtr)r;
 				 _logger.Information($"ACCESS OnOpenHandle [VPath:{virtualPath}]  [PhysPath:{physicalPath}] [Result:{r}]");
 				 if (isCreate && r != -1)
@@ -686,7 +633,7 @@ namespace Hoardarr
 					 r = Syscall.chown(physicalPath, (uint)context.UserId, (uint)context.GroupId);
 					 _logger.Information($"ACCESS OnOpenHandle Create Permissions [VPath:{virtualPath}]  [PhysPath:{physicalPath}] [Result:{r}]");
 				 }
-				 return r== -1?-1:0;
+				 return r == -1 ? -1 : 0;
 			 };
 
 			if (cacheItem == null)
@@ -709,7 +656,7 @@ namespace Hoardarr
 			}
 
 			var result = action(cacheItem.PhysicalPath);
-			if (result!= -1)
+			if (result != -1)
 			{
 				lock (cacheItem.Entry)
 				{
@@ -745,7 +692,7 @@ namespace Hoardarr
 						pb, (ulong)buf.Length, offset);
 			}
 			_logger.Verbose($"OnWriteHandle [VPath:{virtualPath}] [Handle:{info.Handle}] [Result:{r}]");
-			return LogAnyError(virtualPath, r == -1?-1:0);
+			return LogAnyError(virtualPath, r == -1 ? -1 : 0);
 		}
 
 		protected override Errno OnGetFileSystemStatus(string virtualPath, out Statvfs stbuf)
@@ -788,8 +735,8 @@ namespace Hoardarr
 			var cacheItem = _cache.GetItem(virtualPath);
 			if (cacheItem != null)
 			{
-				lock(cacheItem.Entry)
-				  cacheItem.Entry.OpenHandles--;
+				lock (cacheItem.Entry)
+					cacheItem.Entry.OpenHandles--;
 				_logger.Information($"OnReleaseHandle [VPath:{virtualPath}] [Handles:{cacheItem.Entry.OpenHandles}] [Result:{r}]");
 				cacheItem.UpdateStats(_logger);
 				cacheItem.Entry.Disks[0].UpdateDiskStats(_logger);
