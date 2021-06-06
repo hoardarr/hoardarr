@@ -10,14 +10,15 @@ There are several existing pieces of software to union directories on Linux e.g.
 ## Features
 * Union file system
 * Metadata cached in memory (Not file contents) when not open.
-* Energy efficient storage when disks are in frequently accessed as only the disk where the file is located is required to spin up.
+* Energy efficient storage - only disk where file is located will spin up if disks have spun down due to infrequently accesses.
 
 ## Installation
 
-* Extract to /usr/share/hoardarrfs or where required
-* chmod +x /usr/share/hoardarrfs
-* ln /usr/share/hoardarrfs/hoardarrfs /usr/bin/hoardarrfs
-* Execute e.g. hoardarrfs /tmp/dest /tmp/src1 /tmp/src2
+* Installation libfuse e.g. apt-get install libfuse2
+* Extract to /usr/share/hoardarr or where required
+* chmod +x /usr/share/hoardarr/hoardarr
+* ln /usr/share/hoardarr/hoardarr /usr/bin/hoardarr
+* Execute e.g. hoardarr /tmp/dest /tmp/src1 /tmp/src2
 
 ## Todo list
 * Renaming folders with multiple disk is not fully implemented.
