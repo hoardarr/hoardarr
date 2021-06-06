@@ -1387,87 +1387,24 @@ namespace Mono.Fuse.NETStandard {
 			return Errno.ENOSYS;
 		}
 
-		private object directoryLock = new object ();
-
-		private Dictionary<string, EntryEnumerator> directoryReaders = 
-			new Dictionary <string, EntryEnumerator> ();
-
-		private Random directoryKeys = new Random ();
-
 		private int _OnReadDirectory (string path, IntPtr buf, IntPtr filler, 
 				long offset, IntPtr fi, IntPtr stbuf)
 		{
 			Errno errno = 0;
 			try {
-				if (offset == 0)
-					GetDirectoryEnumerator (path, fi, out offset, out errno);
+				var info = new OpenedPathInfo();
+				CopyOpenedPathInfo(fi, info);
+
+				errno = OnReadDirectory(path, info, out List<DirectoryEntry> paths);
 				if (errno != 0)
-					return ConvertErrno (errno);
-
-				EntryEnumerator entries = null;
-				lock (directoryLock) {
-					string key = offset.ToString ();
-					if (directoryReaders.ContainsKey (key))
-						entries = directoryReaders [key];
-				}
-
-				// FUSE will invoke _OnReadDirectory at least twice, but if there were
-				// very few entries then the enumerator will get cleaned up during the
-				// first call, so this is (1) expected, and (2) ignorable.
-				if (entries == null) {
-					return 0;
-				}
-
-				bool cleanup = FillEntries (filler, buf, stbuf, offset, entries);
-
-				if (cleanup) {
-					entries.Dispose ();
-					lock (directoryLock) {
-						directoryReaders.Remove (offset.ToString ());
-					}
-				}
+					return ConvertErrno(errno);
+				FillEntries (filler, buf, stbuf, offset, paths);
 			}
 			catch (Exception e) {
 				Trace.WriteLine (e.ToString());
 				errno = Errno.EIO;
 			}
 			return ConvertErrno (errno);
-		}
-
-		private void GetDirectoryEnumerator (string path, IntPtr fi, out long offset, out Errno errno)
-		{
-			OpenedPathInfo info = new OpenedPathInfo ();
-			CopyOpenedPathInfo (fi, info);
-
-			offset = -1;
-
-			IEnumerable<DirectoryEntry> paths;
-			errno = OnReadDirectory (path, info, out paths);
-			if (errno != 0)
-				return;
-			if (paths == null) {
-				Trace.WriteLine ("OnReadDirectory: errno = 0 but paths is null!");
-				errno = Errno.EIO;
-				return;
-			}
-			IEnumerator<DirectoryEntry> e = paths.GetEnumerator ();
-			if (e == null) {
-				Trace.WriteLine ("OnReadDirectory: errno = 0 but enumerator is null!");
-				errno = Errno.EIO;
-				return;
-			}
-			int key;
-			lock (directoryLock) {
-				do {
-					key = directoryKeys.Next (1, int.MaxValue);
-				} while (directoryReaders.ContainsKey (key.ToString()));
-				directoryReaders [key.ToString()] = new EntryEnumerator (e);
-			}
-
-			CopyOpenedPathInfo (info, fi);
-
-			offset = key;
-			errno  = 0;
 		}
 
 		class EntryEnumerator : IEnumerator<DirectoryEntry> {
@@ -1511,27 +1448,29 @@ namespace Mono.Fuse.NETStandard {
 			}
 		}
 
-		private bool FillEntries (IntPtr filler, IntPtr buf, IntPtr stbuf, 
-				long offset, EntryEnumerator entries)
+		private void FillEntries (IntPtr filler, IntPtr buf, IntPtr stbuf, 
+				long offset, List<DirectoryEntry> entries)
 		{
-			while (entries.MoveNext ()) {
-				DirectoryEntry entry = entries.Current;
+			for(int i=0;i< entries.Count;i++)
+			{
+				var entry = entries[i];
 				IntPtr _stbuf = IntPtr.Zero;
-				if (entry.Stat.st_ino != 0) {
-					CopyStat (ref entry.Stat, stbuf);
+				if (entry.Stat.st_ino != 0)
+				{
+					CopyStat(ref entry.Stat, stbuf);
 					_stbuf = stbuf;
 				}
-				int r = mfh_invoke_filler (filler, buf, entry.Name, _stbuf, offset);
-				if (r != 0) {
-					entries.Repeat = true;
-					return false;
+
+				int r = mfh_invoke_filler(filler, buf, entry.Name, _stbuf, offset);
+				if (r != 0)
+				{
+					i--;
 				}
 			}
-			return true;
 		}
 
 		protected virtual Errno OnReadDirectory (string directory, OpenedPathInfo info, 
-				out IEnumerable<DirectoryEntry> paths)
+				out List<DirectoryEntry> paths)
 		{
 			paths = null;
 			return Errno.ENOSYS;
@@ -1587,7 +1526,7 @@ namespace Mono.Fuse.NETStandard {
 				OnInit (new ConnectionInformation (conn));
 				return opsp;
 			}
-			catch (Exception e) {
+			catch  {
 				return IntPtr.Zero;
 			}
 		}

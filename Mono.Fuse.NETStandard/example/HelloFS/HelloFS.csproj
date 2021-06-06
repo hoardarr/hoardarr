@@ -2,7 +2,7 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <RootNamespace>Mono.Fuse.NETStandard.Samples</RootNamespace>
-    <TargetFramework>netcoreapp2.0</TargetFramework>
+    <TargetFramework>net5.0</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
     <None Include="..\..\nativelibs\linux-x64\libMonoFuseHelper.so">
@@ -13,6 +13,6 @@
     <ProjectReference Include="..\..\Mono.Fuse.NETStandard\Mono.Fuse.NETStandard.csproj" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="Mono.Posix.NETStandard" Version="1.0.0" />
+    <PackageReference Include="Mono.Posix.NETStandard" Version="5.20.1-preview" />
   </ItemGroup>
 </Project>
