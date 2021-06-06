@@ -1,5 +1,5 @@
 # Hoardarr File System
-Opiniated disk/directory pooling on Linux. 
+Opinionated disk/directory pooling on Linux. 
 
 Status: Pre-Alpha (Functional but not production ready)
 
